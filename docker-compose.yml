@@ -1,0 +1,50 @@
+version: "3.9"
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - svc1
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app  # Mount local frontend folder inside the container
+      - /app/node_modules  # Prevent overwriting node_modules
+
+  svc1:
+    build: ./svc1
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      # - svc2
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/phennxio
+      - SVC2_URL=http://svc2:9000/notification  # For HTTP notification to SVC2
+
+  # svc2:
+  #   build: ./svc2
+  #   ports:
+  #     - "9000:9000"
+  #   environment:
+  #     - LOG_LEVEL=info  # Configure logging level
+
+  db:
+    image: postgres
+    # persist data beyond lifetime of container
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=phennxio
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    healthcheck:
+      test: pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}
+      interval: 2s
+      retries: 10
+
+volumes:
+  postgres_data:
